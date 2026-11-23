@@ -1,36 +1,48 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
+<p align="center"><img src="assets/hero.svg" alt="LidAwake — a menu-bar switch for lid-closed Mac sessions with a battery guard" width="100%"></p>
 
-# LidAwake
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-26%2B-334155?logo=apple&amp;logoColor=white" alt="macOS 26 or later">
+  <img src="https://img.shields.io/badge/Architecture-Apple_silicon-2563EB" alt="Apple silicon">
+  <img src="https://img.shields.io/badge/Battery_cutoff-10%25-166534" alt="Ten percent battery cutoff">
+</p>
 
-Created in [T3 Code](https://t3.codes).
-
-A single menu-bar switch for keeping an Apple silicon Mac awake with the lid closed. While the switch is on, LidAwake 1.3 requests display sleep when macOS reports a closed lid. It checks about every two seconds. The command can also turn off connected external displays. Opening the lid leaves wake behavior to macOS. Built on macOS 26.7.1 (25G241).
+One menu-bar switch to **keep an Apple silicon Mac awake with its lid closed**. Use it for ongoing work after remote access is already configured.
 
 ## Use
 
-1. If upgrading, switch the previous version off, wait for **Off**, and quit it. Open the new LidAwake.app in Finder. Click **Lid** in the menu bar.
-2. Select **Keep awake with lid closed**, and approve the one-time macOS administrator prompt. Future sessions on this account reuse that approval, including after quitting the app or restarting the Mac. Wait for **On · battery** or **On · plugged in**. Upgrading from 1.2 asks once to replace its privileged helper. Another tool that already disabled sleep must end its session first.
-3. You can unplug or reconnect the charger during a session. To stop, uncheck the switch or quit. On battery, the session ends at 10% charge or if the charge level is unavailable, allowing normal sleep. Start a new session manually after charging.
-4. To test on the Air, start a T3 task there, lock the screen, and fully close the lid. Check for fresh output on the Pro a few minutes later. Reopen the lid to use the screen again. A partly open lid may still register as open.
+1. [Download LidAwake.zip](https://github.com/nerdynaman/lidawake/raw/refs/heads/main/release/LidAwake.zip), unzip and open the app.
+2. Click **Lid → Keep awake with lid closed** and approve the one-time administrator setup.
+3. Wait for **On · battery** or **On · plugged in**, then close the lid. Uncheck the switch or quit to end the session.
 
-## Permissions and recovery
+When upgrading, switch the old version off, wait for **Off**, and quit before opening the new copy. Downloads are ad hoc signed, not notarized; you can also [build locally](#build).
 
-On first use, macOS asks an administrator to install a read-only, root-owned copy of session.sh under /private/etc and a sudoers rule for your numeric user ID. The installer checks the rule with visudo before activating it. To inspect exactly what will run, pass **--print-setup** to the app executable. macOS handles the password dialog.
+```mermaid
+flowchart LR
+    A[Enable switch] --> B[Sleep override]
+    B --> C[Continue lid-closed work]
+    C --> D[Switch off, quit or battery cutoff]
+    D --> E[Restore normal sleep]
+```
 
-The rule lets processes running as your account start this one fixed helper command with a clean environment. The helper uses a system-wide lock, allows the sleep override on external power or above 10% battery, and restores normal sleep when the battery reaches the cutoff or the app’s pipe closes. The authorization survives reboot and deleting the app. A change to the installed helper or removal of the rule requires setup again.
+## Session behavior
 
-To revoke access, turn the switch off, wait for **Off**, and quit. Run this in Terminal from the account that enabled LidAwake:
+| Power | Display | Ending a session |
+| --- | --- | --- |
+| Works plugged in; on battery, stops at 10% or if charge is unknown | Requests display sleep when the lid is closed; external displays may also turn off | Normal exit restores sleep; opening the lid alone does not end the session |
 
-    sudo /bin/rm -f "/private/etc/sudoers.d/lidawake-$(id -u)" "/private/etc/lidawake-session-$(id -u)-v1"
+Administrator setup installs a persistent, fixed helper authorization for your account. It remains after quitting or deleting the app. **[Read permissions, revocation & recovery](docs/USAGE.md#permissions-and-recovery)** before use; forced termination or restoration failure can leave the sleep override enabled.
 
-The override is a system setting. A hard power loss, a forcibly killed helper, or a restoration failure can leave it set. If that happens and LidAwake was responsible, open Terminal and run:
+## Build
 
-    sudo /usr/bin/pmset disablesleep 0
+Requires Apple’s Command Line Tools. The build targets Apple silicon and macOS 26+.
 
-Avoid running another sleep override during a session because both tools would write the same setting. Remote access must already be configured independently.
+```sh
+git clone https://github.com/nerdynaman/lidawake.git
+cd lidawake
+./build.sh
+open build/LidAwake.app
+```
 
-## Build from source
+The build uses Apple system frameworks and creates an ad hoc signed app. [Testing & diagnostics](docs/USAGE.md#build-from-source) cover simulated cleanup tests, permission checks and read-only power status.
 
-With Apple's Command Line Tools installed, run **./build.sh** in the source directory. The resulting app is **build/LidAwake.app**. The build uses the local Apple compiler, system frameworks, and an ad hoc signature. The binary has no Apple Developer ID notarization. Building locally is an option if a transferred copy triggers Gatekeeper.
-
-Run **python3 test_session.py** for the simulated power and cleanup tests. After building, run **python3 test_permission.py** to check the one-time setup and relaunch in a temporary directory. Run **build/LidAwake.app/Contents/MacOS/LidAwake --status** for read-only power diagnostics.
+[Detailed usage & recovery](docs/USAGE.md) · [Session helper](session.sh) · Created in [T3 Code](https://t3.codes)
